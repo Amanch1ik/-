@@ -1,0 +1,106 @@
+# Dependency directories
+node_modules/
+*.egg-info/
+__pycache__/
+.pytest_cache/
+*.pyc
+
+# Environment files
+*.env
+*.env.local
+*.env.development
+*.env.production
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build outputs
+dist/
+build/
+out/
+*.egg
+*.egg-info
+*.whl
+
+# Logs and databases
+logs/
+*.log
+*.sqlite
+*.db
+*.sqlite3
+yess-backend/yess.db
+
+# Sensitive data
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# IDE and Editor folders
+.vscode/
+.idea/
+*.swp
+*.swo
+*.bak
+*.orig
+
+# OS generated files
+.DS_Store
+Thumbs.db
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+
+# Frontend specific
+frontend/coverage/
+frontend/.pnp/
+frontend/.pnp.js
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# Backend specific
+yess-backend/uploads/
+yess-backend/temp/
+yess-backend/media/
+yess-backend/static/
+yess-backend/alembic/versions/
+yess-backend/*.db
+yess-backend/*.sqlite3
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+.python-version
+
+# Large files
+*.zip
+*.tar
+*.tar.gz
+*.rar
+
+# Backup files
+*.bak
+*.gho
+*.ori
+*.orig
+*.tmp
+
+# Deployment and CI/CD
+.deployment
+.circleci
+.github
+.gitlab-ci.yml
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
