@@ -1,100 +1,127 @@
 """
 Authentication endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import timedelta
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from app.core.database import get_db
-from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token
-from app.models.user import User
-from app.models.wallet import Wallet
-from app.models.agent import Agent, Referral
-from app.schemas.user import UserCreate, UserLogin, UserResponse, TokenResponse
+
 from app.core.config import settings
-import uuid
+from app.core.database import get_db
+from app.services.auth_service import AuthService
+from app.schemas.user import UserCreate, UserResponse, TokenResponse
+from app.models.user import User
 
-router = APIRouter()
+router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-
-@router.post("/register", response_model=TokenResponse)
-async def register(user_data: UserCreate, db: Session = Depends(get_db)):
-    """Register new user"""
+@router.post("/register", response_model=UserResponse)
+def register_user(
+    user_data: UserCreate,
+    db: Session = Depends(get_db)
+) -> Any:
+    """
+    Регистрация нового пользователя
     
-    # Check if user exists
-    if db.query(User).filter(User.phone == user_data.phone).first():
-        raise HTTPException(status_code=400, detail="Phone already registered")
-    
-    if user_data.email and db.query(User).filter(User.email == user_data.email).first():
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    # Create user
-    user = User(
-        name=user_data.name,
-        email=user_data.email,
-        phone=user_data.phone,
-        password_hash=get_password_hash(user_data.password),
-        city_id=user_data.city_id,
-        referral_code=str(uuid.uuid4())[:8].upper()  # Generate unique code
-    )
-    db.add(user)
-    db.flush()
-    
-    # Create wallet
-    wallet = Wallet(user_id=user.id, balance=0.00)
-    db.add(wallet)
-    
-    # Handle referral
-    if user_data.referral_code:
-        agent = db.query(Agent).filter(Agent.referral_code == user_data.referral_code).first()
-        if agent:
-            # Create referral
-            referral = Referral(
-                agent_id=agent.id,
-                referred_user_id=user.id,
-                bonus=settings.DEFAULT_REFERRAL_BONUS
-            )
-            db.add(referral)
-            
-            # Give bonus to agent
-            agent_wallet = db.query(Wallet).filter(Wallet.user_id == agent.user_id).first()
-            if agent_wallet:
-                agent_wallet.balance += settings.DEFAULT_REFERRAL_BONUS
-                agent.total_bonus += settings.DEFAULT_REFERRAL_BONUS
-                agent.total_referrals += 1
-    
-    db.commit()
-    db.refresh(user)
-    
-    # Create tokens
-    access_token = create_access_token({"sub": str(user.id)})
-    refresh_token = create_refresh_token({"sub": str(user.id)})
-    
-    return TokenResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        user_id=user.id
-    )
-
+    - Требует уникального номера телефона
+    - Хэширует пароль
+    - Создает нового пользователя
+    """
+    try:
+        new_user = AuthService.register_user(
+            db, 
+            phone_number=user_data.phone_number, 
+            password=user_data.password,
+            first_name=user_data.first_name,
+            last_name=user_data.last_name
+        )
+        return UserResponse.from_orm(new_user)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/login", response_model=TokenResponse)
-async def login(user_data: UserLogin, db: Session = Depends(get_db)):
-    """Login user"""
+def login_user(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+) -> Any:
+    """
+    Аутентификация пользователя
     
-    user = db.query(User).filter(User.phone == user_data.phone).first()
-    
-    if not user or not verify_password(user_data.password, user.password_hash):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect phone or password"
+    - Проверяет номер телефона и пароль
+    - Генерирует access и refresh токены
+    """
+    try:
+        user = AuthService.authenticate_user(
+            db, 
+            phone_number=form_data.username, 
+            password=form_data.password
         )
+        
+        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        refresh_token_expires = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        
+        access_token = AuthService.create_access_token(
+            data={"sub": str(user.id)}, 
+            expires_delta=access_token_expires
+        )
+        
+        refresh_token = AuthService.create_access_token(
+            data={"sub": str(user.id)}, 
+            expires_delta=refresh_token_expires
+        )
+        
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+@router.post("/refresh", response_model=TokenResponse)
+def refresh_token(
+    refresh_token: str,
+    db: Session = Depends(get_db)
+) -> Any:
+    """
+    Обновление access токена с помощью refresh токена
     
-    access_token = create_access_token({"sub": str(user.id)})
-    refresh_token = create_refresh_token({"sub": str(user.id)})
-    
-    return TokenResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        user_id=user.id
-    )
+    - Проверяет валидность refresh токена
+    - Генерирует новый access токен
+    """
+    try:
+        # Здесь будет логика декодирования и проверки refresh токена
+        # В реальном приложении нужно добавить более сложную логику
+        from jose import jwt, JWTError
+        payload = jwt.decode(
+            refresh_token, 
+            settings.SECRET_KEY, 
+            algorithms=[settings.ALGORITHM]
+        )
+        user_id = payload.get("sub")
+        
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid refresh token")
+        
+        user = db.query(User).filter(User.id == user_id).first()
+        
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        
+        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        new_access_token = AuthService.create_access_token(
+            data={"sub": str(user.id)}, 
+            expires_delta=access_token_expires
+        )
+        
+        return {
+            "access_token": new_access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer"
+        }
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Could not validate credentials")
 
 
 @router.get("/me", response_model=UserResponse)

@@ -1,35 +1,60 @@
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 
-from jose import jwt, JWTError
+import jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.user import User
-from app.schemas.user import UserCreate, UserInDB
-from app.core.database import get_db
+from app.core.exceptions import AuthenticationException
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class AuthService:
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    
-    @classmethod
-    def verify_password(cls, plain_password: str, hashed_password: str) -> bool:
-        """Проверка пароля с использованием bcrypt"""
-        return cls.pwd_context.verify(plain_password, hashed_password)
-    
-    @classmethod
-    def get_password_hash(cls, password: str) -> str:
-        """Хэширование пароля"""
-        return cls.pwd_context.hash(password)
-    
+    @staticmethod
+    def verify_password(plain_password: str, hashed_password: str) -> bool:
+        """
+        Verify a plain password against its hash
+        
+        Args:
+            plain_password (str): Password in plain text
+            hashed_password (str): Hashed password from database
+        
+        Returns:
+            bool: True if password is correct, False otherwise
+        """
+        return pwd_context.verify(plain_password, hashed_password)
+
+    @staticmethod
+    def get_password_hash(password: str) -> str:
+        """
+        Hash a password for storing
+        
+        Args:
+            password (str): Plain text password
+        
+        Returns:
+            str: Hashed password
+        """
+        return pwd_context.hash(password)
+
     @classmethod
     def create_access_token(
         cls, 
         data: Dict[str, Any], 
         expires_delta: Optional[timedelta] = None
     ) -> str:
-        """Создание JWT токена доступа"""
+        """
+        Create a JWT access token
+        
+        Args:
+            data (Dict[str, Any]): Payload data for the token
+            expires_delta (Optional[timedelta]): Token expiration time
+        
+        Returns:
+            str: Encoded JWT token
+        """
         to_encode = data.copy()
         
         if expires_delta:
@@ -38,104 +63,79 @@ class AuthService:
             expire = datetime.utcnow() + timedelta(minutes=15)
         
         to_encode.update({"exp": expire})
+        
         encoded_jwt = jwt.encode(
             to_encode, 
             settings.SECRET_KEY, 
-            algorithm="HS256"
+            algorithm=settings.ALGORITHM
         )
-        return encoded_jwt
-    
-    @classmethod
-    def create_refresh_token(
-        cls, 
-        data: Dict[str, Any], 
-        expires_delta: Optional[timedelta] = None
-    ) -> str:
-        """Создание refresh токена"""
-        if not expires_delta:
-            expires_delta = timedelta(days=7)
         
-        return cls.create_access_token(data, expires_delta)
-    
-    @classmethod
-    def decode_token(cls, token: str) -> Dict[str, Any]:
-        """Декодирование и валидация токена"""
-        try:
-            payload = jwt.decode(
-                token, 
-                settings.SECRET_KEY, 
-                algorithms=["HS256"]
-            )
-            return payload
-        except JWTError:
-            return None
-    
+        return encoded_jwt
+
     @classmethod
     def authenticate_user(
         cls, 
         db: Session, 
-        username: str, 
+        phone_number: str, 
         password: str
     ) -> Optional[User]:
-        """Аутентификация пользователя"""
-        user = db.query(User).filter(User.username == username).first()
+        """
+        Authenticate a user by phone number and password
+        
+        Args:
+            db (Session): Database session
+            phone_number (str): User's phone number
+            password (str): User's password
+        
+        Returns:
+            Optional[User]: Authenticated user or None
+        """
+        user = db.query(User).filter(User.phone_number == phone_number).first()
         
         if not user:
-            return None
+            raise AuthenticationException("Пользователь не найден")
         
         if not cls.verify_password(password, user.hashed_password):
-            return None
+            raise AuthenticationException("Неверный пароль")
         
         return user
-    
+
     @classmethod
     def register_user(
         cls, 
         db: Session, 
-        user: UserCreate
-    ) -> UserInDB:
-        """Регистрация нового пользователя"""
-        hashed_password = cls.get_password_hash(user.password)
+        phone_number: str, 
+        password: str, 
+        **kwargs
+    ) -> User:
+        """
+        Register a new user
         
-        db_user = User(
-            username=user.username,
-            email=user.email,
+        Args:
+            db (Session): Database session
+            phone_number (str): User's phone number
+            password (str): User's password
+            **kwargs: Additional user details
+        
+        Returns:
+            User: Created user
+        """
+        # Check if user already exists
+        existing_user = db.query(User).filter(User.phone_number == phone_number).first()
+        
+        if existing_user:
+            raise AuthenticationException("Пользователь с таким номером телефона уже существует")
+        
+        hashed_password = cls.get_password_hash(password)
+        
+        new_user = User(
+            phone_number=phone_number,
             hashed_password=hashed_password,
-            is_active=True,
-            is_superuser=False
+            **kwargs
         )
         
-        db.add(db_user)
+        db.add(new_user)
         db.commit()
-        db.refresh(db_user)
+        db.refresh(new_user)
         
-        return UserInDB.from_orm(db_user)
-    
-    @classmethod
-    def is_password_strong(cls, password: str) -> bool:
-        """Проверка сложности пароля"""
-        return (
-            len(password) >= 12 and  # Минимальная длина
-            any(char.isupper() for char in password) and  # Заглавные буквы
-            any(char.islower() for char in password) and  # Строчные буквы
-            any(char.isdigit() for char in password) and  # Цифры
-            any(not char.isalnum() for char in password)  # Спецсимволы
-        )
-    
-    @classmethod
-    def track_login_attempt(
-        cls, 
-        db: Session, 
-        username: str, 
-        success: bool
-    ) -> None:
-        """Отслеживание попыток входа"""
-        login_attempt = LoginAttempt(
-            username=username,
-            success=success,
-            timestamp=datetime.utcnow()
-        )
-        db.add(login_attempt)
-        db.commit()
-
-auth_service = AuthService()
+        return new_user

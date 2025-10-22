@@ -2,14 +2,51 @@
 Configuration settings for Kyrgyzstan
 """
 from pydantic import BaseSettings, PostgresDsn, RedisDsn, validator
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict, Any
 import os
 from functools import lru_cache
+import secrets
 
 class Settings(BaseSettings):
-    # Project Configuration
-    PROJECT_NAME: str = "YESS Loyalty System"
-    VERSION: str = "1.0.0"
+    # Project settings
+    PROJECT_NAME: str = "Yess Loyalty"
+    
+    # Database configuration
+    POSTGRES_HOST: str = 'localhost'
+    POSTGRES_USER: str = 'yess_user'
+    POSTGRES_PASSWORD: str = 'password'
+    POSTGRES_DB: str = 'yess_loyalty'
+    
+    # SQLAlchemy Database URI
+    SQLALCHEMY_DATABASE_URI: Optional[PostgresDsn] = None
+    
+    @validator("SQLALCHEMY_DATABASE_URI", pre=True)
+    def assemble_db_connection(cls, v: Optional[str], values: Dict[str, Any]) -> Any:
+        if isinstance(v, str):
+            return v
+        return PostgresDsn.build(
+            scheme="postgresql",
+            user=values.get("POSTGRES_USER"),
+            password=values.get("POSTGRES_PASSWORD"),
+            host=values.get("POSTGRES_HOST"),
+            path=f"/{values.get('POSTGRES_DB') or ''}",
+        )
+    
+    # Authentication settings
+    SECRET_KEY: str = secrets.token_urlsafe(32)
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    
+    # Security settings
+    CORS_ORIGINS: list = ["http://localhost:3000", "https://yessloyalty.com"]
+    
+    # External services
+    SENTRY_DSN: Optional[str] = None
+    
+    # Feature flags
+    ENABLE_REGISTRATION: bool = True
+    ENABLE_TWO_FACTOR_AUTH: bool = False
     
     # Server Configuration
     HOST: str = "0.0.0.0"
@@ -27,45 +64,15 @@ class Settings(BaseSettings):
     TIME_FORMAT: str = "HH:MM"
     NUMBER_FORMAT: str = "1 234,56"
     
-    # Database Configuration
-    DATABASE_URL: PostgresDsn
-    DATABASE_POOL_SIZE: int = 20
-    DATABASE_MAX_OVERFLOW: int = 10
-    
     # Redis Configuration
     REDIS_URL: RedisDsn
     REDIS_CACHE_EXPIRATION: int = 3600  # 1 hour
-    
-    # Security Configuration
-    SECRET_KEY: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    REFRESH_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
     
     # Frontend URLs
     FRONTEND_URL: str = "http://localhost:3000"
     FRONTEND_PROD_URL: str = "https://yess-loyalty.com"
     
     # CORS Configuration
-    CORS_ORIGINS: List[str] = []
-    
-    @validator("CORS_ORIGINS", pre=True)
-    def build_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
-        """Динамическая сборка разрешенных источников"""
-        if isinstance(v, str):
-            return [v]
-        return v
-    
-    def get_cors_origins(self) -> List[str]:
-        """Получение списка разрешенных источников"""
-        default_origins = [
-            self.FRONTEND_URL,
-            self.FRONTEND_PROD_URL,
-            "http://127.0.0.1:3000",
-            "https://localhost:3000"
-        ]
-        return list(set(default_origins + self.CORS_ORIGINS))
-    
-    # Безопасность
     CORS_ALLOW_CREDENTIALS: bool = True
     CORS_ALLOW_METHODS: List[str] = ["*"]
     CORS_ALLOW_HEADERS: List[str] = ["*"]
