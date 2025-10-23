@@ -23,6 +23,20 @@ out/
 *.egg
 *.egg-info
 *.whl
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
 
 # Logs and databases
 logs/
@@ -38,6 +52,7 @@ yess-backend/yess.db
 *.crt
 *.p12
 *.pfx
+appsettings.Development.json
 
 # IDE and Editor folders
 .vscode/
@@ -46,6 +61,8 @@ yess-backend/yess.db
 *.swo
 *.bak
 *.orig
+.vs/
+*.sln.iml
 
 # OS generated files
 .DS_Store
@@ -72,12 +89,27 @@ yess-backend/alembic/versions/
 yess-backend/*.db
 yess-backend/*.sqlite3
 
+# .NET MAUI and Xamarin specific
+*.aab
+*.apk
+*.ipa
+*.app
+*.dll
+*.so
+*.dylib
+*.xam
+*.xamarin
+*.nupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+
 # Virtual environments
 venv/
 env/
 .venv/
 .env/
 .python-version
+ENV/
 
 # Large files
 *.zip
@@ -104,3 +136,40 @@ env/
 # Celery
 celerybeat-schedule
 celerybeat.pid
+
+# Visual Studio and .NET specific
+project.lock.json
+project.fragment.lock.json
+artifacts/
+.tye/
+ScaffoldingReadMe.txt
+StyleCopReport.xml
+*_i.c
+*_p.c
+*_h.h
+*.ilk
+*.meta
+*.obj
+*.iobj
+*.pch
+*.pdb
+*.ipdb
+*.pgc
+*.pgd
+*.rsp
+*.sbr
+*.tlb
+*.tli
+*.tlh
+*.tmp_proj
+*_wpftmp.csproj
+*.sln.metaproj
+*.sln.metaproj.tmp
+
+# Upgrade and backup files
+_UpgradeReport_Files/
+Backup*/
+UpgradeLog*.XML
+UpgradeLog*.htm
+ServiceFabricBackup/
+*.rptproj.bak
