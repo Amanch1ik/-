@@ -1,5 +1,5 @@
 """Partner models"""
-from sqlalchemy import Column, Integer, String, Text, Numeric, Boolean, DateTime, ForeignKey, Date, CheckConstraint, JSON
+from sqlalchemy import Column, Integer, String, Text, Numeric, Boolean, DateTime, ForeignKey, Date, CheckConstraint, JSON, Float, func, Geometry
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.core.database import Base
@@ -39,6 +39,16 @@ class Partner(Base):
     is_active = Column(Boolean, default=True, index=True)
     is_verified = Column(Boolean, default=False)  # Проверен администрацией
     
+    # Геолокационные данные
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
+    
+    # Геометрия для пространственных запросов
+    geom = Column(Geometry('POINT'), nullable=True)
+    
+    # Дополнительные атрибуты
+    default_cashback_rate = Column(Float, default=5.0)
+    
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -55,6 +65,7 @@ class Partner(Base):
     promotions = relationship("Promotion", back_populates="partner")
     orders = relationship("Order", back_populates="partner")
     agent_bonuses = relationship("AgentPartnerBonus", back_populates="partner")
+    transactions = relationship("Transaction", back_populates="partner")
 
 
 class PartnerLocation(Base):
@@ -69,8 +80,18 @@ class PartnerLocation(Base):
     working_hours = Column(JSON)  # {"mon": "9:00-18:00", "tue": "9:00-18:00", ...}
     is_active = Column(Boolean, default=True)
     
+    # Геолокационные данные
+    geom = Column(Geometry('POINT'), nullable=True)
+    
+    # Дополнительная информация о локации
+    is_main_location = Column(Boolean, default=False)
+    
     # Relationships
     partner = relationship("Partner", back_populates="locations")
+    
+    # Метаданные
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
 
 class PartnerEmployee(Base):

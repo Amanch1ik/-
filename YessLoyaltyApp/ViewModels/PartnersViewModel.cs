@@ -1,36 +1,38 @@
+using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
+using System.Windows.Input;
+using YessLoyaltyApp.Models;
 using YessLoyaltyApp.Services;
-using System.Linq; // Added for .Where() and .ToList()
-using System; // Added for StringComparison
-using System.Windows.Input; // Added for ICommand
-using Microsoft.Maui.Controls; // Added for Command
 
 namespace YessLoyaltyApp.ViewModels
 {
-    public class Partner
+    public class PartnerFilter
     {
-        public int Id { get; set; }
-        public string Name { get; set; }
-        public string Category { get; set; }
-        public string LogoPath { get; set; }
-        public string CashbackPercentage { get; set; }
+        public List<string> Categories { get; set; } = new List<string>();
+        public decimal? MinCashback { get; set; }
+        public bool? IsVerified { get; set; }
+        public double? MaxDistance { get; set; }
+        public string SearchQuery { get; set; }
     }
 
     public class PartnersViewModel : INotifyPropertyChanged
     {
-        private readonly ApiService _apiService;
-        private readonly ICacheService _cacheService;
+        private readonly IApiService _apiService;
         private readonly IMonitoringService _monitoringService;
-        private readonly IErrorHandlingService _errorHandlingService;
+        private readonly INativeMapsService _mapsService;
 
-        private ObservableCollection<PartnerDto> _partners;
+        private ObservableCollection<Partner> _partners;
+        private ObservableCollection<Partner> _allPartners;
+        private PartnerFilter _currentFilter = new PartnerFilter();
         private bool _isLoading;
         private string _searchText;
-        private string _selectedCategory;
+        private Location _currentLocation;
 
-        public ObservableCollection<PartnerDto> Partners 
+        public ObservableCollection<Partner> Partners 
         { 
             get => _partners; 
             private set 
@@ -40,129 +42,192 @@ namespace YessLoyaltyApp.ViewModels
             }
         }
 
-        public bool IsLoading 
-        { 
-            get => _isLoading; 
-            private set 
-            {
-                _isLoading = value;
-                OnPropertyChanged();
-            }
-        }
-
-        public string SearchText 
-        { 
-            get => _searchText; 
-            set 
+        public string SearchText
+        {
+            get => _searchText;
+            set
             {
                 _searchText = value;
-                FilterPartners();
-                OnPropertyChanged();
+                ApplyFilters();
+                _monitoringService.TrackEvent("PartnerSearch", new Dictionary<string, string>
+                {
+                    { "SearchQuery", value ?? "" }
+                });
             }
         }
-
-        public string SelectedCategory 
-        { 
-            get => _selectedCategory; 
-            set 
-            {
-                _selectedCategory = value;
-                FilterPartners();
-                OnPropertyChanged();
-            }
-        }
-
-        private ObservableCollection<PartnerDto> _allPartners;
 
         public ICommand LoadPartnersCommand { get; }
-        public ICommand RefreshPartnersCommand { get; }
+        public ICommand ApplyFilterCommand { get; }
+        public ICommand ClearFiltersCommand { get; }
+        public ICommand NavigateToPartnerCommand { get; }
 
         public PartnersViewModel(
-            ApiService apiService, 
-            ICacheService cacheService,
+            IApiService apiService, 
             IMonitoringService monitoringService,
-            IErrorHandlingService errorHandlingService)
+            INativeMapsService mapsService)
         {
             _apiService = apiService;
-            _cacheService = cacheService;
             _monitoringService = monitoringService;
-            _errorHandlingService = errorHandlingService;
+            _mapsService = mapsService;
 
-            _partners = new ObservableCollection<PartnerDto>();
-            _allPartners = new ObservableCollection<PartnerDto>();
+            _partners = new ObservableCollection<Partner>();
+            _allPartners = new ObservableCollection<Partner>();
 
             LoadPartnersCommand = new Command(async () => await LoadPartnersAsync());
-            RefreshPartnersCommand = new Command(async () => await LoadPartnersAsync(true));
+            ApplyFilterCommand = new Command<PartnerFilter>(ApplyCustomFilter);
+            ClearFiltersCommand = new Command(ClearFilters);
+            NavigateToPartnerCommand = new Command<Partner>(NavigateToPartner);
 
-            // Автоматическая загрузка при создании
-            LoadPartnersAsync();
+            InitializeLocationTracking();
         }
 
-        private async Task LoadPartnersAsync(bool forceRefresh = false)
+        private async void InitializeLocationTracking()
         {
-            try 
+            if (await _mapsService.IsLocationAvailableAsync())
+            {
+                _currentLocation = await _mapsService.GetCurrentLocationAsync();
+                _monitoringService.TrackEvent("LocationInitialized", new Dictionary<string, string>
+                {
+                    { "Latitude", _currentLocation?.Latitude.ToString() ?? "N/A" },
+                    { "Longitude", _currentLocation?.Longitude.ToString() ?? "N/A" }
+                });
+            }
+        }
+
+        private async Task LoadPartnersAsync()
+        {
+            try
             {
                 IsLoading = true;
-                _monitoringService.TrackEvent("LoadPartners_Started");
+                _monitoringService.TrackEvent("LoadPartners", new Dictionary<string, string>());
 
-                // Ключ для кэширования
-                const string CACHE_KEY = "partners_list";
-
-                // Попытка получить из кэша с принудительным обновлением
-                var partners = await _cacheService.GetOrCreateAsync(
-                    CACHE_KEY, 
-                    async () => 
-                    {
-                        var response = await _apiService.GetPartnersAsync();
-                        
-                        if (response.IsSuccess)
-                        {
-                            return response.Data;
-                        }
-                        else
-                        {
-                            await _errorHandlingService.DisplayErrorAsync(response.ErrorMessage);
-                            return new List<PartnerDto>();
-                        }
-                    },
-                    // Кэшируем на 1 час, если не указано принудительное обновление
-                    forceRefresh ? TimeSpan.Zero : TimeSpan.FromHours(1)
-                );
-
-                _allPartners = new ObservableCollection<PartnerDto>(partners);
-                FilterPartners();
-
-                _monitoringService.TrackEvent("LoadPartners_Completed", new Dictionary<string, string>
+                var request = new PartnerSearchRequest
                 {
-                    ["PartnersCount"] = partners.Count.ToString()
-                });
+                    Page = 1,
+                    PageSize = 50,
+                    Filter = new PartnerFilterRequest
+                    {
+                        Categories = _currentFilter.Categories,
+                        MinCashback = _currentFilter.MinCashback,
+                        IsVerified = _currentFilter.IsVerified
+                    }
+                };
+
+                var partners = await _apiService.SearchPartnersAsync(request);
+                
+                _allPartners = new ObservableCollection<Partner>(partners);
+                ApplyFilters();
             }
             catch (Exception ex)
             {
                 _monitoringService.TrackException(ex);
-                await _errorHandlingService.DisplayErrorAsync("Не удалось загрузить партнеров");
+                await _errorHandlingService.HandleApiErrorAsync(ex);
             }
-            finally 
+            finally
             {
                 IsLoading = false;
             }
         }
 
-        private void FilterPartners()
+        private void ApplyCustomFilter(PartnerFilter filter)
         {
-            if (string.IsNullOrWhiteSpace(SearchText) && string.IsNullOrWhiteSpace(SelectedCategory))
+            _currentFilter = filter ?? new PartnerFilter();
+            ApplyFilters();
+
+            _monitoringService.TrackEvent("FilterApplied", new Dictionary<string, string>
             {
-                Partners = _allPartners;
-                return;
+                { "Categories", string.Join(",", _currentFilter.Categories) },
+                { "MinCashback", _currentFilter.MinCashback?.ToString() ?? "N/A" },
+                { "IsVerified", _currentFilter.IsVerified?.ToString() ?? "N/A" }
+            });
+        }
+
+        private void ApplyFilters()
+        {
+            var filteredPartners = _allPartners.AsEnumerable();
+
+            // Текстовый поиск
+            if (!string.IsNullOrWhiteSpace(_searchText))
+            {
+                filteredPartners = filteredPartners.Where(p => 
+                    p.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                    p.Category.Contains(_searchText, StringComparison.OrdinalIgnoreCase)
+                );
             }
 
-            Partners = new ObservableCollection<PartnerDto>(
-                _allPartners.Where(p => 
-                    (string.IsNullOrWhiteSpace(SearchText) || 
-                     p.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase)) &&
-                    (string.IsNullOrWhiteSpace(SelectedCategory) || 
-                     p.Category == SelectedCategory)
-            ));
+            // Фильтр по категориям
+            if (_currentFilter.Categories?.Any() == true)
+            {
+                filteredPartners = filteredPartners.Where(p => 
+                    _currentFilter.Categories.Contains(p.Category)
+                );
+            }
+
+            // Фильтр по кешбэку
+            if (_currentFilter.MinCashback.HasValue)
+            {
+                filteredPartners = filteredPartners.Where(p => 
+                    p.CashbackRate >= _currentFilter.MinCashback.Value
+                );
+            }
+
+            // Фильтр по расстоянию
+            if (_currentFilter.MaxDistance.HasValue && _currentLocation != null)
+            {
+                filteredPartners = filteredPartners.Where(p => 
+                    Location.CalculateDistance(
+                        new Location(p.Latitude, p.Longitude), 
+                        _currentLocation, 
+                        DistanceUnits.Kilometers
+                    ) <= _currentFilter.MaxDistance.Value
+                );
+            }
+
+            Partners = new ObservableCollection<Partner>(filteredPartners);
+        }
+
+        private void ClearFilters()
+        {
+            _currentFilter = new PartnerFilter();
+            _searchText = string.Empty;
+            ApplyFilters();
+
+            _monitoringService.TrackEvent("FilterCleared", new Dictionary<string, string>());
+        }
+
+        private async void NavigateToPartner(Partner partner)
+        {
+            if (partner == null) return;
+
+            try
+            {
+                await _mapsService.OpenMapsAsync(
+                    partner.Latitude, 
+                    partner.Longitude, 
+                    partner.Name
+                );
+
+                _monitoringService.TrackEvent("PartnerNavigation", new Dictionary<string, string>
+                {
+                    { "PartnerId", partner.Id.ToString() },
+                    { "PartnerName", partner.Name }
+                });
+            }
+            catch (Exception ex)
+            {
+                _monitoringService.TrackException(ex);
+                await _errorHandlingService.HandleApiErrorAsync(ex);
+            }
+        }
+
+        public bool IsLoading
+        {
+            get => _isLoading;
+            private set
+            {
+                _isLoading = value;
+                OnPropertyChanged();
+            }
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

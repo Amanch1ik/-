@@ -5,7 +5,7 @@ QR Code API
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from app.core.database import get_db
 from app.models.user import User
 from app.models.partner import Partner
@@ -15,6 +15,8 @@ from app.api.v1.auth import get_current_user
 from app.services.qr_service import qr_service
 from app.core.notifications import sms_service, push_service
 from app.core.cache import redis_cache
+from app.schemas.qr import QRPaymentRequest, QRPaymentResponse
+from app.services.transaction_notification_service import transaction_notification_service
 import logging
 
 logger = logging.getLogger(__name__)
@@ -35,22 +37,6 @@ class QRScanResponse(BaseModel):
     cashback_rate: float
     user_balance: float
     message: str
-
-
-class QRPaymentRequest(BaseModel):
-    partner_id: int
-    amount: float
-    location_id: Optional[int] = None
-
-
-class QRPaymentResponse(BaseModel):
-    success: bool
-    transaction_id: int
-    amount_charged: float
-    discount_applied: float
-    cashback_earned: float
-    new_balance: float
-    partner_name: str
 
 
 @router.post("/scan", response_model=QRScanResponse)
@@ -182,21 +168,13 @@ async def pay_with_qr(
     # Инвалидируем кэш
     await redis_cache.invalidate_user_cache(current_user.id)
     
-    # Отправляем SMS уведомление
-    if current_user.sms_enabled and current_user.phone:
-        await sms_service.send_transaction_notification(
-            phone=current_user.phone,
-            amount=final_amount,
-            transaction_type="Оплата"
-        )
-    
-    # Отправляем Push уведомление
-    if current_user.push_enabled and current_user.device_tokens:
-        await push_service.send_transaction_push(
-            device_tokens=current_user.device_tokens,
-            amount=final_amount,
-            transaction_type=f"Оплата в {partner.name}"
-        )
+    # Отправляем уведомления через новый сервис
+    await transaction_notification_service.notify_transaction(
+        user=current_user,
+        transaction=transaction,
+        partner=partner,
+        db=db
+    )
     
     logger.info(
         f"Payment completed: User {current_user.id} paid {final_amount} YesCoin "
