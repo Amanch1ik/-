@@ -1,0 +1,194 @@
+name: 🚀 YessLoyalty CI/CD
+
+on:
+  push:
+    branches: [ master, develop ]
+  pull_request:
+    branches: [ master, develop ]
+
+env:
+  PYTHON_VERSION: 3.9
+  DOTNET_VERSION: 6.0.x
+
+jobs:
+  backend-tests:
+    name: 🐍 Backend Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgis/postgis:13-3.1
+        env:
+          POSTGRES_DB: yess_loyalty_test
+          POSTGRES_PASSWORD: testpassword
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r yess-backend/requirements.txt
+        pip install pytest pytest-cov
+    
+    - name: Run backend tests
+      env:
+        DATABASE_URL: postgresql://postgres:testpassword@localhost:5432/yess_loyalty_test
+      run: |
+        cd yess-backend
+        pytest tests/ --cov=app --cov-report=xml
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./yess-backend/coverage.xml
+        flags: backend
+
+  frontend-tests:
+    name: 🖥️ Frontend Tests
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup .NET ${{ env.DOTNET_VERSION }}
+      uses: actions/setup-dotnet@v2
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    
+    - name: Restore dependencies
+      run: |
+        cd YessLoyaltyApp
+        dotnet restore
+    
+    - name: Build
+      run: |
+        cd YessLoyaltyApp
+        dotnet build --no-restore
+    
+    - name: Test
+      run: |
+        cd YessLoyaltyApp
+        dotnet test --no-build --verbosity normal
+
+  security-scan:
+    name: 🔒 Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        ignore-unfixed: true
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: 'CRITICAL,HIGH'
+    
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  code-quality:
+    name: 🧹 Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Set up .NET
+      uses: actions/setup-dotnet@v2
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    
+    - name: Python Linting
+      run: |
+        pip install flake8 black mypy
+        flake8 yess-backend
+        black --check yess-backend
+        mypy yess-backend
+    
+    - name: .NET Code Style
+      run: |
+        cd YessLoyaltyApp
+        dotnet format --verify-no-changes
+
+  deploy-staging:
+    name: 🚢 Deploy to Staging
+    needs: [backend-tests, frontend-tests, security-scan, code-quality]
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Deploy to Staging
+      env:
+        DEPLOY_KEY: ${{ secrets.STAGING_DEPLOY_KEY }}
+      run: |
+        echo "Deploying to staging environment..."
+        # Здесь будет ваш скрипт деплоя
+
+  deploy-production:
+    name: 🌍 Deploy to Production
+    needs: [backend-tests, frontend-tests, security-scan, code-quality]
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Deploy to Production
+      env:
+        DEPLOY_KEY: ${{ secrets.PRODUCTION_DEPLOY_KEY }}
+      run: |
+        echo "Deploying to production environment..."
+        # Здесь будет ваш скрипт деплоя
+
+  notify:
+    name: 📣 Notify
+    needs: [deploy-staging, deploy-production]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Telegram Notification
+      uses: appleboy/telegram-action@master
+      with:
+        to: ${{ secrets.TELEGRAM_CHAT_ID }}
+        token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        message: |
+          🚀 YessLoyalty CI/CD Report 🚀
+          
+          Backend Tests: ${{ needs.backend-tests.result }}
+          Frontend Tests: ${{ needs.frontend-tests.result }}
+          Security Scan: ${{ needs.security-scan.result }}
+          Code Quality: ${{ needs.code-quality.result }}
+          
+          Staging Deploy: ${{ needs.deploy-staging.result }}
+          Production Deploy: ${{ needs.deploy-production.result }}
+          
+          Commit: ${{ github.sha }}
+          Author: ${{ github.actor }}
+
+# Комментарий для GitHub Actions
