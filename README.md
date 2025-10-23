@@ -1,7 +1,8 @@
 # 🌟 YessLoyalty: Умная система лояльности нового поколения
 
 [![GitHub release](https://img.shields.io/github/v/release/Amanch1ik/-.svg?style=for-the-badge)](https://github.com/Amanch1ik/-/releases)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/Amanch1ik/-/build.yml?style=for-the-badge)](https://github.com/Amanch1ik/-/actions)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/Amanch1ik/-/ci-cd.yml?style=for-the-badge)](https://github.com/Amanch1ik/-/actions)
+[![CodeQL](https://img.shields.io/github/actions/workflow/status/Amanch1ik/-/codeql.yml?label=CodeQL&style=for-the-badge)](https://github.com/Amanch1ik/-/security/code-scanning)
 [![License](https://img.shields.io/github/license/Amanch1ik/-.svg?style=for-the-badge)](https://github.com/Amanch1ik/-/blob/master/LICENSE)
 
 ## 🚀 О проекте
