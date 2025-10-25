@@ -1,93 +1,83 @@
-# 🌟 YessLoyalty: Умная система лояльности нового поколения
+# 🌿 Yess! Loyalty
 
-[![GitHub release](https://img.shields.io/github/v/release/Amanch1ik/-.svg?style=for-the-badge)](https://github.com/Amanch1ik/-/releases)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/Amanch1ik/-/ci-cd.yml?style=for-the-badge)](https://github.com/Amanch1ik/-/actions)
-[![CodeQL](https://img.shields.io/github/actions/workflow/status/Amanch1ik/-/codeql.yml?label=CodeQL&style=for-the-badge)](https://github.com/Amanch1ik/-/security/code-scanning)
-[![License](https://img.shields.io/github/license/Amanch1ik/-.svg?style=for-the-badge)](https://github.com/Amanch1ik/-/blob/master/LICENSE)
+![Yess! Loyalty Logo](screenshots/logo.svg)
+
+[![Build Status](https://img.shields.io/github/actions/workflow/status/your-org/yess-loyalty/ci.yml?style=for-the-badge)](https://github.com/your-org/yess-loyalty/actions)
+[![Coverage](https://img.shields.io/codecov/c/github/your-org/yess-loyalty?style=for-the-badge)](https://codecov.io/gh/your-org/yess-loyalty)
+[![License](https://img.shields.io/github/license/your-org/yess-loyalty?style=for-the-badge)](https://github.com/your-org/yess-loyalty/blob/main/LICENSE)
+[![Version](https://img.shields.io/github/v/release/your-org/yess-loyalty?style=for-the-badge)](https://github.com/your-org/yess-loyalty/releases)
 
 ## 🚀 О проекте
 
-YessLoyalty - инновационная платформа для управления бонусами и кешбэком, которая объединяет технологии и удобство для пользователей и партнеров.
+Yess! Loyalty - инновационная платформа лояльности, созданная для трансформации взаимодействия бизнеса и клиентов в Кыргызстане.
 
-### 🌍 Происхождение
+### 🎯 Наша миссия
 
-Проект родился в сердце Центральной Азии, в Кыргызстане 🇰🇬 - стране гор, свободы и технологических инноваций. Мы стремимся создать решение, которое не только упрощает взаимодействие между бизнесом и клиентами, но и поддерживает локальную экономику.
+Создать прозрачную, удобную и выгодную экосистему бонусных программ, которая объединяет интересы потребителей и партнеров.
 
-
-Контакты:
-- 📧 Email: aman4ikaitbekov@icloud.com
-- 💬 Telegram: [@amanch1ikk](https://t.me/amanch1ikk)
-
-### 🔑 Ключевые особенности
-
-- 💳 Персонализированная бонусная система
-- 📍 Геолокационные рекомендации партнеров
-- 🔔 Умные push-уведомления
-- 🌐 Мультиплатформенное приложение (.NET MAUI)
-- 🔒 Продвинутая система безопасности
-
-## 📦 Технологический стек
+## 🛠 Технологический стек
 
 ### Backend
-![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
-![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
-![PostgreSQL](https://img.shields.io/badge/postgres-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white)
+- **Язык**: Python 3.9
+- **Фреймворк**: FastAPI
+- **База данных**: PostgreSQL
+- **Кэширование**: Redis
+- **Деплой**: Kubernetes, Docker
 
 ### Frontend
-![.NET](https://img.shields.io/badge/.NET-5C2D91?style=for-the-badge&logo=.net&logoColor=white)
-![C#](https://img.shields.io/badge/c%23-%23239120.svg?style=for-the-badge&logo=c-sharp&logoColor=white)
-![MAUI](https://img.shields.io/badge/MAUI-purple?style=for-the-badge&logo=dotnet&logoColor=white)
+- **Платформа**: .NET MAUI
+- **Язык**: C#
+- **Архитектура**: MVVM
+
+## 🌈 Функциональность
+
+- 🏆 Накопление и списание бонусов
+- 🗺️ Интеграция с локальными партнерами
+- 📱 Мультиплатформенное приложение
+- 🔒 Высокий уровень безопасности
+- 🌍 Локализация под Кыргызстан
 
 ## 🚀 Быстрый старт
 
-### Prerequisites
-- [.NET 7 SDK](https://dotnet.microsoft.com/download/dotnet/7.0)
-- [Python 3.10+](https://www.python.org/downloads/)
-- [PostgreSQL](https://www.postgresql.org/download/)
-
-### Установка
-
+### Клонирование репозитория
 ```bash
-# Клонирование репозитория
-git clone https://github.com/Amanch1ik/-.git
-cd bonus---APP-main
-
-# Установка backend
-cd yess-backend
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# Установка frontend
-cd ../YessLoyaltyApp
-dotnet restore
+git clone https://github.com/your-org/yess-loyalty.git
+cd yess-loyalty
 ```
 
-## 📸 Скриншоты
+### Установка backend
+```bash
+cd yess-backend
+pip install -r requirements.txt
+```
 
-<details>
-<summary>Нажмите, чтобы увидеть скриншоты</summary>
+## 📦 Инфраструктура
 
-| Главный экран | Партнеры | Карта |
-|--------------|----------|-------|
-| ![Main](screenshots/main.png) | ![Partners](screenshots/partners.png) | ![Map](screenshots/map.png) |
+- **Хостинг**: Kubernetes
+- **CI/CD**: GitHub Actions
+- **Мониторинг**: Prometheus, Grafana
+- **Логирование**: ELK Stack
 
-</details>
+## 🔒 Безопасность
 
-## 🤝 Contributing
+- Двухфакторная аутентификация
+- Шифрование данных
+- Регулярные security-аудиты
 
-Пожалуйста, прочитайте [CONTRIBUTING.md](CONTRIBUTING.md) для деталей о нашем кодексе поведения и процессе отправки pull-запросов.
+## 📄 Документация
 
-## 📄 Лицензия
+- [Техническое описание](TECHNICAL_DESCRIPTION.md)
+- [Руководство пользователя](USER_GUIDE.md)
+- [Гайд по интеграции](INTEGRATION_GUIDE.md)
 
-Этот проект лицензирован под MIT License - см. [LICENSE](LICENSE) файл для деталей.
+## 🤝 Участие в проекте
 
-## 📞 Контакты
+Пожалуйста, ознакомьтесь с [CONTRIBUTING.md](CONTRIBUTING.md) перед отправкой pull request.
 
-- **Автор**: Аманбол Айтбеков (+996 551 69-72-96)
-- **Email**: aman4ikaitbekov@icloud.com
-- **Telegram**: [@amanch1k](https://t.me/amanch1k)
+## 📋 Лицензия
 
+Проект распространяется под [НАЗВАНИЕ ЛИЦЕНЗИИ]. Подробности в [LICENSE](LICENSE).
 
+---
 
-**С ❤️ создано в Кыргызстане** 🇰🇬
+**© 2025 Yess! Loyalty. Технологии с душой Кыргызстана** 🇰🇬

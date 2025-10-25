@@ -1,116 +1,54 @@
-import redis
+from redis import Redis
+from typing import Any, Optional
 import json
-import asyncio
-from functools import wraps
-from typing import Any, Callable
-from app.core.config import settings
 
 class CacheService:
-    def __init__(self):
-        self.redis_client = redis.Redis.from_url(
-            settings.REDIS_URL, 
-            decode_responses=True,
-            max_connections=20,
-            retry_on_timeout=True
-        )
+    def __init__(self, redis_host: str = 'redis', redis_port: int = 6379):
+        self.redis = Redis(host=redis_host, port=redis_port, decode_responses=True)
+        self.default_expiry = 3600  # 1 час по умолчанию
 
-    def set(self, key: str, value: Any, expire: int = None):
-        """
-        Установка значения в кэш с возможностью указания времени жизни
-        """
-        if expire is None:
-            expire = settings.CACHE_EXPIRATION
-
+    def set(self, key: str, value: Any, expiry: Optional[int] = None):
+        """Установка значения в кэш"""
+        expiry = expiry or self.default_expiry
         serialized_value = json.dumps(value)
-        self.redis_client.setex(key, expire, serialized_value)
+        self.redis.setex(key, expiry, serialized_value)
 
-    async def set_async(self, key: str, value: Any, expire: int = None):
-        """
-        Асинхронная установка значения в кэш
-        """
-        if expire is None:
-            expire = settings.CACHE_EXPIRATION
-
-        serialized_value = json.dumps(value)
-        await asyncio.get_event_loop().run_in_executor(
-            None, 
-            lambda: self.redis_client.setex(key, expire, serialized_value)
-        )
-
-    def get(self, key: str) -> Any:
-        """
-        Получение значения из кэша с десериализацией
-        """
-        cached_value = self.redis_client.get(key)
-        if cached_value:
-            return json.loads(cached_value)
-        return None
-
-    async def get_async(self, key: str) -> Any:
-        """
-        Асинхронное получение значения из кэша
-        """
-        cached_value = await asyncio.get_event_loop().run_in_executor(
-            None,
-            lambda: self.redis_client.get(key)
-        )
+    def get(self, key: str) -> Optional[Any]:
+        """Получение значения из кэша"""
+        cached_value = self.redis.get(key)
         if cached_value:
             return json.loads(cached_value)
         return None
 
     def delete(self, key: str):
-        """
-        Удаление ключа из кэша
-        """
-        self.redis_client.delete(key)
+        """Удаление ключа из кэша"""
+        self.redis.delete(key)
 
-    async def delete_async(self, key: str):
-        """
-        Асинхронное удаление ключа из кэша
-        """
-        await asyncio.get_event_loop().run_in_executor(
-            None,
-            lambda: self.redis_client.delete(key)
-        )
+    def clear_cache(self):
+        """Полная очистка кэша"""
+        self.redis.flushdb()
 
-    def clear(self):
-        """
-        Полная очистка кэша
-        """
-        self.redis_client.flushdb()
-
-    async def clear_async(self):
-        """
-        Асинхронная полная очистка кэша
-        """
-        await asyncio.get_event_loop().run_in_executor(
-            None,
-            lambda: self.redis_client.flushdb()
-        )
-
-    def cached(self, key_prefix: str = '', expire: int = None):
-        """
-        Декоратор для кэширования результатов функций
-        """
-        def decorator(func: Callable):
-            @wraps(func)
-            async def wrapper(*args, **kwargs):
-                # Генерация уникального ключа на основе аргументов
-                key = f"{key_prefix}:{func.__name__}:{hash(str(args) + str(kwargs))}"
+    def cache_method(self, expiry: Optional[int] = None):
+        """Декоратор для кэширования методов"""
+        def decorator(func):
+            def wrapper(*args, **kwargs):
+                # Создание уникального ключа на основе аргументов
+                cache_key = f"{func.__name__}:{hash(str(args) + str(kwargs))}"
                 
                 # Проверка кэша
-                cached_result = await self.get_async(key)
+                cached_result = self.get(cache_key)
                 if cached_result is not None:
                     return cached_result
                 
-                # Выполнение функции
-                result = await func(*args, **kwargs)
+                # Выполнение метода
+                result = func(*args, **kwargs)
                 
                 # Кэширование результата
-                await self.set_async(key, result, expire)
+                self.set(cache_key, result, expiry)
                 
                 return result
             return wrapper
         return decorator
 
+# Глобальный экземпляр сервиса
 cache_service = CacheService()
