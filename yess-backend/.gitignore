@@ -1,0 +1,73 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Virtual environments
+venv/
+test_env/
+.env
+.venv
+
+# IDE settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Pytest
+.pytest_cache/
+
+# Coverage reports
+.coverage
+htmlcov/
+
+# Mypy
+.mypy_cache/
+
+# Docker
+.dockerignore
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Poetry
+poetry.lock
+
+# Locust
+locustfile.log
+test_results/
+
+# Sensitive data
+*.env
+*.pem
+*.key
+
+# Temporary files
+*.tmp
+*.bak
+
+# Database files
+*.sqlite3
+
+# Dependency directories
+node_modules/
+
+# Prometheus
+prometheus_data/
+
+# Grafana
+grafana_data/

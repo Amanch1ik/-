@@ -1,0 +1,81 @@
+groups:
+- name: yess_loyalty_alerts
+  rules:
+  # Мониторинг производительности API
+  - alert: HighAPILatency
+    expr: |
+      histogram_quantile(0.95, sum(rate(yess_request_latency_seconds_bucket[5m])) by (le)) > 1
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Высокая латентность API"
+      description: "95% запросов выполняются дольше 1 секунды в течение 10 минут"
+
+  # Мониторинг ошибок
+  - alert: HighErrorRate
+    expr: |
+      sum(rate(yess_requests_total{status="error"}[5m])) / 
+      sum(rate(yess_requests_total[5m])) > 0.05
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Высокий процент ошибок"
+      description: "Более 5% запросов завершаются ошибкой"
+
+  # Мониторинг базы данных
+  - alert: DatabaseConnectionIssues
+    expr: |
+      sum(pg_stat_database_connections{datname="yess_loyalty"}) < 1
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Проблемы с подключением к базе данных"
+      description: "Нет активных подключений к базе данных YESS Loyalty"
+
+  # Мониторинг Redis
+  - alert: RedisHighMemoryUsage
+    expr: |
+      redis_memory_used_bytes / redis_memory_max_bytes > 0.8
+    for: 15m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Высокое использование памяти Redis"
+      description: "Использовано более 80% памяти Redis в течение 15 минут"
+
+  # Мониторинг нагрузки на сервер
+  - alert: HighCPULoad
+    expr: |
+      avg(rate(node_cpu_seconds_total{mode!="idle"}[5m])) by (instance) > 0.8
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Высокая нагрузка на CPU"
+      description: "Использование CPU превышает 80% в течение 10 минут"
+
+  # Мониторинг геосервиса
+  - alert: SlowGeospatialQueries
+    expr: |
+      histogram_quantile(0.95, sum(rate(yess_geospatial_query_duration_seconds_bucket[5m])) by (le)) > 0.5
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Медленные геопространственные запросы"
+      description: "95% геозапросов выполняются дольше 0.5 секунд"
+
+  # Мониторинг кэша
+  - alert: LowCacheHitRate
+    expr: |
+      sum(rate(yess_cache_hits_total[5m])) / 
+      (sum(rate(yess_cache_hits_total[5m])) + sum(rate(yess_cache_misses_total[5m]))) < 0.7
+    for: 15m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Низкая эффективность кэширования"
+      description: "Коэффициент попаданий в кэш менее 70% в течение 15 минут"

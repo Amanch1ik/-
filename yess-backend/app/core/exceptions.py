@@ -1,97 +1,69 @@
 from fastapi import HTTPException, status
-from typing import Optional, Any, Dict
+from enum import Enum
+from typing import Optional, Dict, Any
 
-class YESSBaseException(Exception):
-    """Базовое исключение для всех ошибок в системе"""
+class ErrorType(Enum):
+    VALIDATION_ERROR = "validation_error"
+    AUTH_ERROR = "authentication_error"
+    NOT_FOUND = "not_found"
+    PERMISSION_DENIED = "permission_denied"
+    INTERNAL_SERVER_ERROR = "internal_server_error"
+    RATE_LIMIT_EXCEEDED = "rate_limit_exceeded"
+    EXTERNAL_SERVICE_ERROR = "external_service_error"
+
+class YessLoyaltyException(Exception):
+    """Базовое исключение для YESS Loyalty"""
     def __init__(
         self, 
         message: str, 
-        status_code: int = status.HTTP_400_BAD_REQUEST,
+        error_type: ErrorType = ErrorType.INTERNAL_SERVER_ERROR,
         details: Optional[Dict[str, Any]] = None
     ):
         self.message = message
-        self.status_code = status_code
+        self.error_type = error_type
         self.details = details or {}
         super().__init__(self.message)
 
-class AuthenticationException(YESSBaseException):
-    """Исключения, связанные с аутентификацией"""
-    def __init__(
-        self, 
-        message: str = "Ошибка аутентификации", 
-        details: Optional[Dict[str, Any]] = None
-    ):
-        super().__init__(
-            message, 
-            status_code=status.HTTP_401_UNAUTHORIZED, 
-            details=details
-        )
-
-class PermissionDeniedException(YESSBaseException):
-    """Исключения, связанные с правами доступа"""
-    def __init__(
-        self, 
-        message: str = "Недостаточно прав", 
-        details: Optional[Dict[str, Any]] = None
-    ):
-        super().__init__(
-            message, 
-            status_code=status.HTTP_403_FORBIDDEN, 
-            details=details
-        )
-
-class ResourceNotFoundException(YESSBaseException):
-    """Исключения при отсутствии ресурса"""
-    def __init__(
-        self, 
-        resource: str, 
-        details: Optional[Dict[str, Any]] = None
-    ):
-        message = f"Ресурс '{resource}' не найден"
-        super().__init__(
-            message, 
-            status_code=status.HTTP_404_NOT_FOUND, 
-            details=details
-        )
-
-class ValidationException(YESSBaseException):
-    """Исключения при ошибках валидации"""
-    def __init__(
-        self, 
-        message: str = "Ошибка валидации данных", 
-        details: Optional[Dict[str, Any]] = None
-    ):
-        super().__init__(
-            message, 
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, 
-            details=details
-        )
-
-class RateLimitException(YESSBaseException):
-    """Исключения при превышении лимита запросов"""
-    def __init__(
-        self, 
-        message: str = "Превышен лимит запросов", 
-        details: Optional[Dict[str, Any]] = None
-    ):
-        super().__init__(
-            message, 
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS, 
-            details=details
-        )
-
-def global_exception_handler(exc: Exception):
-    """Глобальный обработчик исключений"""
-    if isinstance(exc, YESSBaseException):
+    def to_dict(self):
         return {
-            "error": True,
-            "message": exc.message,
-            "details": exc.details
-        }, exc.status_code
-    
-    # Неизвестные исключения
-    return {
-        "error": True,
-        "message": "Внутренняя ошибка сервера",
-        "details": str(exc)
-    }, status.HTTP_500_INTERNAL_SERVER_ERROR
+            "error": {
+                "type": self.error_type.value,
+                "message": self.message,
+                "details": self.details
+            }
+        }
+
+class ValidationException(YessLoyaltyException):
+    """Ошибки валидации данных"""
+    def __init__(self, field: str, error: str):
+        super().__init__(
+            f"Ошибка валидации: {field} - {error}",
+            error_type=ErrorType.VALIDATION_ERROR,
+            details={"field": field, "error": error}
+        )
+
+class AuthenticationException(YessLoyaltyException):
+    """Ошибки аутентификации"""
+    def __init__(self, message: str):
+        super().__init__(
+            message, 
+            error_type=ErrorType.AUTH_ERROR
+        )
+
+class NotFoundException(YessLoyaltyException):
+    """Ресурс не найден"""
+    def __init__(self, resource: str):
+        super().__init__(
+            f"Ресурс не найден: {resource}",
+            error_type=ErrorType.NOT_FOUND,
+            details={"resource": resource}
+        )
+
+class PermissionDeniedException(YessLoyaltyException):
+    """Недостаточно прав"""
+    def __init__(self, action: str):
+        super().__init__(
+            f"Недостаточно прав для выполнения: {action}",
+            error_type=ErrorType.PERMISSION_DENIED,
+            details={"action": action}
+        )

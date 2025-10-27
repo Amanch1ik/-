@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  backend:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: yess-backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://yess_user:yess_password@postgres:5432/yess_loyalty
+      - REDIS_URL=redis://redis:6379/0
+      - ENVIRONMENT=production
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - yess_network
+
+  postgres:
+    image: postgres:13
+    container_name: yess-postgres
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=yess_loyalty
+      - POSTGRES_USER=yess_user
+      - POSTGRES_PASSWORD=yess_password
+    ports:
+      - "5432:5432"
+    networks:
+      - yess_network
+
+  redis:
+    image: redis:6.2-alpine
+    container_name: yess-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - yess_network
+
+  prometheus:
+    image: prom/prometheus
+    container_name: yess-prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - yess_network
+
+  grafana:
+    image: grafana/grafana
+    container_name: yess-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=yess_admin_pass
+    networks:
+      - yess_network
+
+volumes:
+  postgres_data:
+  grafana_data:
+
+networks:
+  yess_network:
+    driver: bridge
