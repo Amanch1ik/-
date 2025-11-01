@@ -1,30 +1,23 @@
-# 🌿 Yess! Loyalty
+# 🌿 Yess! Loyalty System
 
-![Yess! Loyalty Logo](screenshots/logo.svg)
+## 🚀 Проект
 
-[![Build Status](https://img.shields.io/github/actions/workflow/status/your-org/yess-loyalty/ci.yml?style=for-the-badge)](https://github.com/your-org/yess-loyalty/actions)
-[![Coverage](https://img.shields.io/codecov/c/github/your-org/yess-loyalty?style=for-the-badge)](https://codecov.io/gh/your-org/yess-loyalty)
-[![License](https://img.shields.io/github/license/your-org/yess-loyalty?style=for-the-badge)](https://github.com/your-org/yess-loyalty/blob/main/LICENSE)
-[![Version](https://img.shields.io/github/v/release/your-org/yess-loyalty?style=for-the-badge)](https://github.com/your-org/yess-loyalty/releases)
+Yess! Loyalty - инновационная платформа лояльности для бизнеса в Кыргызстане.
 
-## 🚀 О проекте
+### 🎯 Миссия
 
-Yess! Loyalty - инновационная платформа лояльности, созданная для трансформации взаимодействия бизнеса и клиентов в Кыргызстане.
-
-### 🎯 Наша миссия
-
-Создать прозрачную, удобную и выгодную экосистему бонусных программ, которая объединяет интересы потребителей и партнеров.
+Создание прозрачной и удобной экосистемы бонусных программ.
 
 ## 🛠 Технологический стек
 
 ### Backend
-- **Язык**: Python 3.9
+- **Язык**: Python 3.10+
 - **Фреймворк**: FastAPI
 - **База данных**: PostgreSQL
 - **Кэширование**: Redis
-- **Деплой**: Kubernetes, Docker
+- **Деплой**: Docker, Kubernetes
 
-### Frontend
+### Мобильное приложение
 - **Платформа**: .NET MAUI
 - **Язык**: C#
 - **Архитектура**: MVVM
@@ -35,20 +28,22 @@ Yess! Loyalty - инновационная платформа лояльност
 - 🗺️ Интеграция с локальными партнерами
 - 📱 Мультиплатформенное приложение
 - 🔒 Высокий уровень безопасности
-- 🌍 Локализация под Кыргызстан
 
 ## 🚀 Быстрый старт
 
-### Клонирование репозитория
-```bash
-git clone https://github.com/your-org/yess-loyalty.git
-cd yess-loyalty
-```
-
 ### Установка backend
+
 ```bash
 cd yess-backend
+python -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
+```
+
+### Запуск приложения
+
+```bash
+uvicorn src.main:app --reload
 ```
 
 ## 📦 Инфраструктура
@@ -56,7 +51,6 @@ pip install -r requirements.txt
 - **Хостинг**: Kubernetes
 - **CI/CD**: GitHub Actions
 - **Мониторинг**: Prometheus, Grafana
-- **Логирование**: ELK Stack
 
 ## 🔒 Безопасность
 
@@ -64,19 +58,13 @@ pip install -r requirements.txt
 - Шифрование данных
 - Регулярные security-аудиты
 
-## 📄 Документация
-
-- [Техническое описание](TECHNICAL_DESCRIPTION.md)
-- [Руководство пользователя](USER_GUIDE.md)
-- [Гайд по интеграции](INTEGRATION_GUIDE.md)
-
 ## 🤝 Участие в проекте
 
-Пожалуйста, ознакомьтесь с [CONTRIBUTING.md](CONTRIBUTING.md) перед отправкой pull request.
+Пожалуйста, ознакомьтесь с `CONTRIBUTING.md`
 
 ## 📋 Лицензия
 
-Проект распространяется под [НАЗВАНИЕ ЛИЦЕНЗИИ]. Подробности в [LICENSE](LICENSE).
+MIT License
 
 ---
 
