@@ -7,7 +7,7 @@
         </linearGradient>
     </defs>
     
-    <rect width="500" height="500" rx="50" ry="50" fill="url(#yess-gradient)" />
+    <rect width="510" height="510" rx="50" ry="50" fill="url(#yess-gradient)" />
     
     <text x="250" y="300" 
           font-family="Arial, sans-serif" 
